@@ -1,20 +1,24 @@
-# script
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local HttpService = game:GetService("HttpService")
-local CollectorModule = require(game.ServerScriptService.setupmoneyyy)
-local setupCollector = CollectorModule.setupCollector
 
-local function setTransparency(model, value)
+    local Players = game:GetService("Players")
+
+     local RunService = game:GetService("RunService")
+
+    local HttpService = game:GetService("HttpService")
+    local CollectorModule = require(game.ServerScriptService.setupmoneyyy)
+    local setupCollector = CollectorModule.setupCollector
+
+    local function setTransparency(model, value)
 	for _, part in ipairs(model:GetDescendants()) do
 		if part:IsA("BasePart") then
 			part.Transparency = value
 		end
 	end
-end
+    end
 
-local function discoverPet(player, petName)
-	local discoveredFolder = player:WaitForChild("DiscoveredPets")
+
+    local function discoverPet(player, petName)
+	 
+	 local discoveredFolder = player:WaitForChild("DiscoveredPets")
 
 	if not discoveredFolder:FindFirstChild(petName) then
 		local tag = Instance.new("BoolValue")
@@ -22,9 +26,9 @@ local function discoverPet(player, petName)
 		tag.Value = true
 		tag.Parent = discoveredFolder
 	end
-end
+    end
 
-local function moveToTarget(mob, target)
+    local function moveToTarget(mob, target)
 	local humanoid = mob:FindFirstChildWhichIsA("Humanoid")
 	if not humanoid or not mob.PrimaryPart then return end
 
@@ -40,31 +44,46 @@ local function moveToTarget(mob, target)
 	end
 
 	humanoid:MoveTo(target.Position)
-end
+    end
 
-local function isBaseFull(base)
-	for i = 1, 25 do
-		local maker = base:FindFirstChild("maker"..i)
-		if maker and not maker:GetAttribute("Occupied") then
-			return false
-		end
-	end
-	return true
-end
+    local function isBaseFull(base)
+	    for i = 1, 25 do
+	    	local maker = base:FindFirstChild("maker"..i)
+	    	if maker and not maker:GetAttribute("Occupied") then
+	    		return false
+	    	end
+	    end
+	    return true
 
-local function onBuyPrompt(prompt, player)
+    end
+
+
+    local function onBuyPrompt(prompt, player)
+
 	local mob = prompt.Parent.Parent
+	
 	if not mob then return end  
+
 	local costValue = mob:FindFirstChild("Cost")
+
 	if not costValue then return end
+
 	local cost = costValue.Value
+
 	local leaderstats = player:FindFirstChild("leaderstats")
+
 	if not leaderstats then return end
+
 	local chachmult = player:FindFirstChild("Chachmult")
+	
 	if not chachmult then return end
+	
 	local cash = leaderstats:FindFirstChild("Money")
+	
 	if not cash then return end
+	
 	local baseName = player:GetAttribute("OwnedBase")
+	
 	local base = workspace.bases:FindFirstChild(baseName)
 	if not base then return end
 	-- Stop if base is full
@@ -72,6 +91,7 @@ local function onBuyPrompt(prompt, player)
 		warn(player.Name .. " tried to buy but their base is full.")
 		return
 	end
+	
 	-- Stop if not enough money
 	if cash.Value < cost then return end
 	-- Take money
@@ -84,111 +104,187 @@ local function onBuyPrompt(prompt, player)
 		local humanoid = mob:FindFirstChildOfClass("Humanoid")
 		if humanoid then
 			humanoid:MoveTo(mob.PrimaryPart.Position)
+	
 		end
+		
 		-- LOOP movement until touching claimer
+		
 		local touching = false
+	
 		local touchConnection
+	
 		touchConnection = claimer.Touched:Connect(function(hit)
+		
 			if hit:IsDescendantOf(mob) then
+		
 				touchConnection:Disconnect()
+		
 				touching = true
+		
 			end
+	
 		end)
+	
 		task.spawn(function()
+	
 			while mob.Parent and mob.PrimaryPart and not touching do
-				moveToTarget(mob, claimer)
-				task.wait(0.2) -- keep reissuing movement
-			end
-		end)
-		-- Wait until touching claimer
-		spawn(function()
-			while not touching do
-				task.wait(0.1)
-			end
-			-- Stop movement
-			if humanoid then
-				humanoid:MoveTo(mob.PrimaryPart.Position)
-			end
-			-- Find free maker
-			local maker
-			for i = 1, 25 do
-				local m = base:FindFirstChild("maker"..i)
-				if m and not m:GetAttribute("Occupied") then
-					maker = m
-					break
-				end
-			end
-			if not maker then return end
-			local uniqueId = HttpService:GenerateGUID(false)
-			mob:SetAttribute("MobId", uniqueId)
-			maker:SetAttribute("MobId", uniqueId)
-			maker:SetAttribute("Occupied", true)
-			local mobNameValue = maker:FindFirstChild("mobname")
-			if mobNameValue then
-				mobNameValue.Value = mob.Name
-			end
-			-- Snap to maker
-			mob:SetPrimaryPartCFrame(maker.CFrame + Vector3.new(0, 5, 0))
-			print("✅", mob.Name, "reached claimer and snapped to maker for", player.Name)
-			mob:SetAttribute("OwnedByPlayer", true)
-			mob:SetAttribute("OwnerName", player.Name)
-			mob:SetAttribute("OwnerBase", base.Name)
-			local makerGui = maker:FindFirstChild("collecttor")
-			local guiii = makerGui:FindFirstChild("BillboardGui")
-			if guiii then
-				guiii.Enabled = true
-			end
-			discoverPet(player, mob.Name)
-			-- Collector logic
-			local storage = setupCollector(maker)
-			local makeing = mob:FindFirstChild("make")
-			if not storage then return end
-			task.spawn(function()
-				while mob.Parent and (not mob:GetAttribute("OwnedByPlayer") or mob:GetAttribute("BeingClaimed")) do
-					storage.Value += makeing.Value 
-					task.wait(1)
-				end
-				maker:SetAttribute("Occupied", false)
-				maker:SetAttribute("MobId", nil)
-				local mobNameValue = maker:FindFirstChild("mobname")
-				if mobNameValue then mobNameValue.Value = "" end
-			end)
-			-- Enable prompts
-			local hrp = mob:FindFirstChild("HumanoidRootPart")
-			if hrp then
-				local sellPrompt = hrp:FindFirstChild("ProximityPromptsell")
-				local stailPrompt = hrp:FindFirstChild("ProximityPromptstail")
-				if sellPrompt then sellPrompt.Enabled = true end
-				if stailPrompt then stailPrompt.Enabled = true end
-			end
-		end)
-	end
-end
 
-local function onSellPrompt(prompt, player)
-	local mob = prompt.Parent.Parent
-	if not mob then return end
-	if mob:GetAttribute("OwnerName") ~= player.Name then return end
-	local costValue = mob:FindFirstChild("Cost")
-	if not costValue then return end
-	local cost = costValue.Value
-	local leaderstats = player:FindFirstChild("leaderstats")
-	if not leaderstats then return end
-	local chachmult = player:FindFirstChild("Chachmult")
-	if not chachmult then print("ninja is gay") end
-	if not chachmult then  return end
-	local cash = leaderstats:FindFirstChild("Money")
-	if not cash then return end
-	cash.Value += (math.floor(cost / 2)) * chachmult.value
-	local baseName = mob:GetAttribute("OwnerBase")
-	local mobId = mob:GetAttribute("MobId")
-	local base = workspace.bases:FindFirstChild(baseName)
-	if base and mobId then
-		for i = 1, 25 do
-			local m = base:FindFirstChild("maker"..i)
-			if m and m:GetAttribute("Occupied") and m:GetAttribute("MobId") == mobId then
-				m:SetAttribute("Occupied", false)
-				m:SetAttribute("MobId", nil)
+				moveToTarget(mob, claimer)
+	
+				task.wait(0.2) -- keep reissuing movement
+	
+			end
+
+		end)
+	
+		-- Wait until touching claimer
+	
+		spawn(function()
+	
+			while not touching do
+		
+				task.wait(0.1)
+		
+			end
+		
+			-- Stop movement
+		
+			if humanoid then
+		
+				humanoid:MoveTo(mob.PrimaryPart.Position)
+		
+			end
+	
+			-- Find free maker
+	
+			local maker
+	
+			for i = 1, 25 do
+	
+				local m = base:FindFirstChild("maker"..i)
+	
+				if m and not m:GetAttribute("Occupied") then
+	
+					maker = m
+			
+					break
+			
+				end
+		
+			end
+		
+			if not maker then return end
+		
+			local uniqueId = HttpService:GenerateGUID(false)
+	
+			mob:SetAttribute("MobId", uniqueId)
+		
+			maker:SetAttribute("MobId", uniqueId)
+		
+			maker:SetAttribute("Occupied", true)
+		
+			local mobNameValue = maker:FindFirstChild("mobname")
+		
+			if mobNameValue then
+		
+				mobNameValue.Value = mob.Name
+			
+			end
+		
+			-- Snap to maker
+			
+			mob:SetPrimaryPartCFrame(maker.CFrame + Vector3.new(0, 5, 0))
+		
+			print("✅", mob.Name, "reached claimer and snapped to maker for", player.Name)
+		
+			mob:SetAttribute("OwnedByPlayer", true)
+	
+			mob:SetAttribute("OwnerName", player.Name)
+
+			mob:SetAttribute("OwnerBase", base.Name)
+		
+			local makerGui = maker:FindFirstChild("collecttor")
+		
+			local guiii = makerGui:FindFirstChild("BillboardGui")
+		
+			if guiii then
+			
+				guiii.Enabled = true
+			
+			end
+			
+			discoverPet(player, mob.Name)
+		
+			-- Collector logic
+		
+			local storage = setupCollector(maker)
+			
+			local makeing = mob:FindFirstChild("make")
+			
+			if not storage then return end
+		
+			task.spawn(function()
+				
+				while mob.Parent and (not mob:GetAttribute("OwnedByPlayer") or mob:GetAttribute("BeingClaimed")) do
+					
+					storage.Value += makeing.Value 
+					
+					task.wait(1)
+				
+				end
+				
+				maker:SetAttribute("Occupied", false)
+				
+				maker:SetAttribute("MobId", nil)
+				
+				local mobNameValue = maker:FindFirstChild("mobname")
+				
+				if mobNameValue then mobNameValue.Value = "" end
+			
+			end)
+			
+			-- Enable prompts
+			
+			local hrp = mob:FindFirstChild("HumanoidRootPart")
+			
+			if hrp then
+				
+				local sellPrompt = hrp:FindFirstChild("ProximityPromptsell")
+				
+				local stailPrompt = hrp:FindFirstChild("ProximityPromptstail")
+				
+				if sellPrompt then sellPrompt.Enabled = true end
+				
+				if stailPrompt then stailPrompt.Enabled = true end
+			    end
+		    end)
+	    end
+    end
+
+    local function onSellPrompt(prompt, player)
+	    local mob = prompt.Parent.Parent
+	    if not mob then return end
+	    if mob:GetAttribute("OwnerName") ~= player.Name then return end
+	    local costValue = mob:FindFirstChild("Cost")
+	    if not costValue then return end
+	    local cost = costValue.Value
+	    local leaderstats = player:FindFirstChild("leaderstats")
+	    if not leaderstats then return end
+	    local chachmult = player:FindFirstChild("Chachmult")
+	    if not chachmult then print("ninja is gay") end
+	    if not chachmult then  return end
+	    local cash = leaderstats:FindFirstChild("Money")
+	    if not cash then return end
+	    cash.Value += (math.floor(cost / 2)) * chachmult.value
+	    local baseName = mob:GetAttribute("OwnerBase")
+	    local mobId = mob:GetAttribute("MobId")
+	    local base = workspace.bases:FindFirstChild(baseName)
+    	if base and mobId then
+	    	for i = 1, 25 do
+		    	local m = base:FindFirstChild("maker"..i)
+			    if m and m:GetAttribute("Occupied") and m:GetAttribute("MobId") == mobId then
+				    m:SetAttribute("Occupied", false)
+				    m:SetAttribute("MobId", nil)
 
 				-- keep collector visible, only hide its text labels
 				for _, part in ipairs(m:GetDescendants()) do
@@ -220,46 +316,48 @@ local function onSellPrompt(prompt, player)
 	end
 
 	mob:Destroy()
-end
+    end
 
 
-local function removePromptsFromModel(mob)
-	local hrp = mob:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end
-	for _, child in ipairs(hrp:GetChildren()) do
-		if child:IsA("ProximityPrompt") then
-			child.Enabled = false
-		end
-	end
-end
+    local function removePromptsFromModel(mob)
+	    local hrp = mob:FindFirstChild("HumanoidRootPart")
+	    if not hrp then return end
+	    for _, child in ipairs(hrp:GetChildren()) do
+		    if child:IsA("ProximityPrompt") then
+			    child.Enabled = false
+		    end
+	    end
+    end
 
-local function enablePromptsOnModel(mob)
-	local hrp = mob:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end
-	for _, child in ipairs(hrp:GetChildren()) do
-		if child:IsA("ProximityPrompt") then
-			child.Enabled = true
-		end
-	end
-end
+    local function enablePromptsOnModel(mob)
+	    local hrp = mob:FindFirstChild("HumanoidRootPart")
+	    if not hrp then return end
+	    for _, child in ipairs(hrp:GetChildren()) do
+		    if child:IsA("ProximityPrompt") then
+			    child.Enabled = true
+		    end
+	    end
+    end
 
-local function ensurePrimaryPart(model)
+    local function ensurePrimaryPart(model)
 	if model.PrimaryPart then return true end
-	local hrp = model:FindFirstChild("HumanoidRootPart")
-	if hrp then
+	    local hrp = model:FindFirstChild("HumanoidRootPart")
+	    if hrp then
 		model.PrimaryPart = hrp
 		return true
-	end
-	return false
-end
+	    end
+	    return false
+    end
 
-local carryingMap = {} 
+    local carryingMap = {}
 
-local function onStailPrompt(prompt, player)
+    local function onStailPrompt(prompt, player)
+
 	if not player or not player.Parent then return end
+	
 	local mob = prompt.Parent.Parent
 	if not mob then return end
-
+	
 	local ownerName = mob:GetAttribute("OwnerName")
 	if not ownerName or ownerName == player.Name then return end
 
